@@ -8,6 +8,16 @@ export default function Properties() {
   const [rentDueProperties, setRentDueProperties] = useState([]);
   const [showPopup, setShowPopup] = useState(false);
   const [searchTerm, setSearchTerm] = useState(''); // Add search state
+  const [tenureEndingProperties, setTenureEndingProperties] = useState([]);
+  
+  
+  const calculateDaysLeft = (endDate) => {
+    const currentDate = new Date();
+    const end = new Date(endDate);
+    const timeDiff = end - currentDate;
+    const daysLeft = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)); // Convert milliseconds to days
+    return daysLeft;
+  };
 
   useEffect(() => {
     const fetchProperties = async () => {
@@ -27,9 +37,15 @@ export default function Properties() {
           const dueProperties = data.filter(property => property.isAssigned && property.assignedTenant.rentPaid < property.price);
           console.log(dueProperties);
           
-          if (dueProperties.length > 0) {
+          const endingSoonProperties = data.filter(property => 
+            property.isAssigned && calculateDaysLeft(property.assignedTenant.endDate) <= 10
+          );
+
+          // If there are any rent due or tenure ending properties, show the popup
+          if (dueProperties.length > 0 || endingSoonProperties.length > 0) {
             setRentDueProperties(dueProperties);
-            setShowPopup(true); // Show popup if there are any rent due properties
+            setTenureEndingProperties(endingSoonProperties); // Set tenure ending properties
+            setShowPopup(true); // Show popup if there are any rent due or tenure ending properties
           }
         } else {
           console.error('Expected an array but received:', data);
@@ -76,7 +92,7 @@ export default function Properties() {
         </div>
 
         {/* Popup for rent due properties */}
-        {showPopup && (
+        {/* {showPopup && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
             <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
               <h2 className="text-2xl font-bold mb-4">Rent Due Properties</h2>
@@ -96,7 +112,55 @@ export default function Properties() {
               </button>
             </div>
           </div>
+        )} */}
+        {showPopup && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+    <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+      {/* Rent Due Properties Section */}
+      <h2 className="text-2xl font-bold mb-4">Rent Due Properties</h2>
+      <ul>
+        {rentDueProperties.length > 0 ? (
+          rentDueProperties.map(property => (
+            <li key={property._id} className="mb-2">
+              <p className="font-semibold">{property.propertyName}</p>
+              <p className="text-sm text-gray-600">Rent Paid: ₹{property.assignedTenant.rentPaid} / ₹{property.price}</p>
+            </li>
+          ))
+        ) : (
+          <li className="mb-2">
+            <p className="text-sm text-gray-600">No properties with rent due.</p>
+          </li>
         )}
+      </ul>
+
+      {/* Tenure Ending Soon Section */}
+      <h2 className="text-2xl font-bold mt-6 mb-4">Tenure Ending Soon</h2>
+      <ul>
+        {tenureEndingProperties.length > 0 ? (
+          tenureEndingProperties.map(property => (
+            <li key={property._id} className="mb-2">
+              <p className="font-semibold">{property.propertyName}</p>
+              <p className="text-sm text-gray-600">End Date: {new Date(property.assignedTenant.endDate).toLocaleDateString()}</p>
+              <p className="text-sm text-gray-600">Days Left: {calculateDaysLeft(property.assignedTenant.endDate)} days</p>
+            </li>
+          ))
+        ) : (
+          <li className="mb-2">
+            <p className="text-sm text-gray-600">No properties near end date.</p>
+          </li>
+        )}
+      </ul>
+
+      <button
+        className="mt-4 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+        onClick={closePopup}
+      >
+        Close
+      </button>
+    </div>
+  </div>
+)}
+
 
         {/* Property listing */}
         <div className="flex flex-wrap justify-center items-center gap-4">
